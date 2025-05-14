@@ -17,12 +17,21 @@
 #include "uart.h"
 #include"key.h"
 #include"oled.h"
+ #include "interrupt_manager.h"
+
   volatile int exit_code = 0;
 
 #define LED1(x)  PINS_DRV_WritePin(PTD,16,!x);
 #define LED2(x)  PINS_DRV_WritePin(PTD,15,!x);
 #define LED3(x)  PINS_DRV_WritePin(PTD,1,!x);
 #define LED4(x)  PINS_DRV_WritePin(PTD,0,!x);
+
+ftm_state_t ftm_struct;
+
+void FTM1_Ovf_Reload_IRQHandler(void)
+{
+	FTM_DRV_ClearStatusFlags(INST_FLEXTIMER_MC1,FTM_TIME_OVER_FLOW_FLAG);
+}
 
 
 int main(void)
@@ -43,34 +52,33 @@ int main(void)
 	I2C_MasterInit(&i2c1_instance, &i2c1_MasterConfig0);//初始化I2C外设,用于OLED通讯
 	LPUART_DRV_Init(INST_LPUART1, &lpuart1_State, &lpuart1_InitConfig0); //初始化串口
 
+	FTM_DRV_Init(INST_FLEXTIMER_MC1, &flexTimer_mc1_InitConfig,&ftm_struct);
+
+
+	FTM_DRV_InitCounter(INST_FLEXTIMER_MC1, &flexTimer_mc1_TimerConfig);
+	FTM_DRV_CounterStart(INST_FLEXTIMER_MC1);
+
+	INT_SYS_InstallHandler(FTM1_Ovf_Reload_IRQn,FTM1_Ovf_Reload_IRQHandler,FTM1_Ovf_Reload_IRQHandler);
+
+	INT_SYS_EnableIRQ(FTM1_Ovf_Reload_IRQn);
 	oled_init(); //OLED配置参数初始化
 	OLED_TITLE((uint8_t*)"S32K144",(uint8_t*)"01_BASE");//OLED显示标题
-	u1_printf("初始化完毕,MCU运行频率为 %d Mhz \r\n",MCU_Freq);
     while(1)
     {
 	pinstate = KEY_Proc (1);
 	if(pinstate ==BTN1_PRES )
 			{
-			u1_printf("KEY1 按下 \r\n");
-			OLED_ShowString(0,4,(uint8_t*)"KEY 1 PRESS",16,0); //OLED显示字符串
+			u1_printf("KEY1 press!!!!!!!!!!!!!\r\n");
 			}
 
 		else if(pinstate ==BTN2_PRES )
 			{
-			u1_printf("KEY2 按下\r\n");
-			OLED_ShowString(0,4,(uint8_t*)"KEY 2 PRESS",16,0);
-
+			u1_printf("KEY2 press!\r\n");
 			}
 		else if(pinstate ==BTN3_PRES )
 			{
-			u1_printf("KEY3 按下\r\n");
-			OLED_ShowString(0,4,(uint8_t*)"KEY 3 PRESS",16,0);
+			u1_printf("KEY3 press!\r\n");
 			}
-		else
-		{
-			LCD_clear_L(0,4); //OLED清行
-			LCD_clear_L(0,5);
-		}
 //    	delay_ms(100);
 //    	PINS_DRV_TogglePins(PTD, 1 << 0);
 //    	PINS_DRV_TogglePins(PTD, 1 << 1);
