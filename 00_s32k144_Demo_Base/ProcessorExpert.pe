@@ -43,6 +43,7 @@
     <SdkVersionValue>SDK_S32K1xx_15</SdkVersionValue>
     <SdkRepositoryName>SDK_S32K1xx_15</SdkRepositoryName>
     <SdkRepositoryId>SDK_S32K1xx_15</SdkRepositoryId>
+    <SdkLibraryModes lines_count="0" />
   </Options>
   <UserFolder>
     <UserFolderName />
