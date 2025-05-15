@@ -19,6 +19,28 @@
 #include"oled.h"
  #include "interrupt_manager.h"
 
+
+ typedef struct
+{
+    uint16_t cnt;              
+    uint8_t  flg;              
+} s_timer_t;
+
+typedef enum
+{
+	timer_10ms = 0,
+	timer_50ms = 1,
+	timer_100ms = 2,
+	timer_500ms = 3,
+	timer_max,
+}e_timer_index;
+
+
+static  void FTM0_IRQHandler(void);
+static  void  timer_array_init(s_timer_t* _timer_array);
+
+ 
+
   volatile int exit_code = 0;
 
 #define LED1(x)  PINS_DRV_WritePin(PTD,16,!x);
@@ -26,11 +48,70 @@
 #define LED3(x)  PINS_DRV_WritePin(PTD,1,!x);
 #define LED4(x)  PINS_DRV_WritePin(PTD,0,!x);
 
+
+
+
 ftm_state_t ftm_struct;
 
-void FTM1_Ovf_Reload_IRQHandler(void)
+
+
+
+
+s_timer_t timer_array[timer_max];
+
+
+
+//5ms int
+static void FTM0_IRQHandler(void)
 {
 	FTM_DRV_ClearStatusFlags(INST_FLEXTIMER_MC1,FTM_TIME_OVER_FLOW_FLAG);
+	if (timer_array[timer_10ms].flg == 0)
+	{
+			if (timer_array[timer_10ms].cnt++ >= 2) 
+			{
+				timer_array[timer_10ms].cnt = 0;
+				timer_array[timer_10ms].flg = 1;
+			}
+	}
+
+	if (timer_array[timer_50ms].flg == 0)
+	{
+			if (timer_array[timer_50ms].cnt++ >= 10) 
+			{
+				timer_array[timer_50ms].cnt = 0;
+				timer_array[timer_50ms].flg = 1;
+			}
+	}
+
+	if (timer_array[timer_100ms].flg == 0)
+	{
+			if (timer_array[timer_100ms].cnt++ >= 20) 
+			{
+				timer_array[timer_100ms].cnt = 0;
+				timer_array[timer_100ms].flg = 1;
+			}
+	}
+
+	if (timer_array[timer_500ms].flg == 0)
+	{
+		if (timer_array[timer_500ms].cnt++ >= 100) 
+		{
+			timer_array[timer_500ms].cnt = 0;
+			timer_array[timer_500ms].flg = 1;
+		}
+	}
+}
+
+
+static  void  timer_array_init(s_timer_t* _timer_array)
+{
+	uint8_t i = 0;
+	for (i = 0; i < timer_max; ++i)
+	{
+		_timer_array[i].cnt = 0;
+		_timer_array[i].flg = 0;
+	}
+
 }
 
 
@@ -58,11 +139,15 @@ int main(void)
 	FTM_DRV_InitCounter(INST_FLEXTIMER_MC1, &flexTimer_mc1_TimerConfig);
 	FTM_DRV_CounterStart(INST_FLEXTIMER_MC1);
 
-	INT_SYS_InstallHandler(FTM1_Ovf_Reload_IRQn,FTM1_Ovf_Reload_IRQHandler,FTM1_Ovf_Reload_IRQHandler);
+	INT_SYS_InstallHandler(FTM0_Ovf_Reload_IRQn,&FTM0_IRQHandler,(isr_t*)0);
 
-	INT_SYS_EnableIRQ(FTM1_Ovf_Reload_IRQn);
-	oled_init(); //OLED配置参数初始化
-	OLED_TITLE((uint8_t*)"S32K144",(uint8_t*)"01_BASE");//OLED显示标题
+	INT_SYS_EnableIRQ(FTM0_Ovf_Reload_IRQn);
+	
+	//oled_init(); //OLED配置参数初始化
+	//OLED_TITLE((uint8_t*)"S32K144",(uint8_t*)"01_BASE");//OLED显示标题
+
+	timer_array_init(timer_array);
+	
     while(1)
     {
 	pinstate = KEY_Proc (1);
@@ -79,6 +164,11 @@ int main(void)
 			{
 			u1_printf("KEY3 press!\r\n");
 			}
+		if (timer_array[timer_500ms].flg == 1)
+		{
+			timer_array[timer_500ms].flg = 0;
+			u1_printf("500ms task run!\r\n");
+		}
 //    	delay_ms(100);
 //    	PINS_DRV_TogglePins(PTD, 1 << 0);
 //    	PINS_DRV_TogglePins(PTD, 1 << 1);
